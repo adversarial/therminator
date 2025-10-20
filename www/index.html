@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Therminator</title>
+    <link rel="stylesheet" href="default.css">
+    <script src="default.js" defer></script>  
+</head>
+<body>    
+    
+    <h1>Therminator Control Panel</h1>
+
+    <h2>Status</h2>
+    <p class="alert alerti-info" role="alert">
+        Set switches in real time or use preset modes.
+    </p>
+
+    <table border = 0>
+      <tr>
+        <td><button type="button" onclick="set_channel([{channel : 0, enable : 0}, {channel: 1, enable: 0}, {channel: 2, enable: 0}, {channel: 3, enable: 0}])">All Off</button></td>
+      </tr>
+  </table>
+
+    <table border=1>
+        <tr>
+            <td>R</td>
+            <td>W1</td>
+            <td>W2</td>
+            <td>G</td>
+        </tr>
+        <tr>
+            <td>
+                 <button id="button_channel0" onclick="set_channel([{channel : 0, enable : 1}])">ON</button>
+                 <br>
+                <button id="button_channel0_disable" disabled onclick="set_channel([{channel : 0, enable : 0}])">OFF</button>
+            </td>
+            <td>
+                 <button id="button_channel1" onclick="set_channel([{channel : 1, enable : 1}])">ON</button>
+                 <br>
+                 <button id="button_channel1_disable" disabled onclick="set_channel([{channel : 1, enable : 0}])">OFF</button>
+            </td>
+            <td>
+                <button id="button_channel2" onclick="set_channel([{channel : 2, enable : 1}])">ON</button>
+                <br>
+                <button id="button_channel2_disable" disabled onclick="set_channel([{channel : 2, enable : 0}])">OFF</button>
+            </td>
+            <td>
+               <button id="button_channel3" onclick="set_channel([{channel : 3, enable : 1}])">ON</button>
+               <br>
+               <button id="button_channel3_disable" disabled onclick="set_channel([{channel : 3, enable : 0}])">OFF</button>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
