@@ -3,11 +3,13 @@ document.addEventListener("DOMContentLoaded", function () {
   initChannelStates();
 });
 
+window.onblur = function(){window.onfocus = function(){location.reload(true)}};
+
 function initChannelStates() {
   fetch("/api/get_channel_states", {
       method: "GET"
   }).then(response => {
-    if (response.status === 200) {
+    if (response.status >= 200 && response.status < 300) {
       return response.json();
     } else {
       console.error(response.statusText);
@@ -24,8 +26,7 @@ function initChannelStates() {
       document.getElementById(enabled_button_id).disabled = false;
       document.getElementById(alternate_button_id).disabled = true;
     })
-  })
-  .catch(error => console.error(error));
+  }).catch(error => console.error(error));
 }
 
 function set_channel(params) {
@@ -33,10 +34,6 @@ function set_channel(params) {
     method: "POST",
     body: JSON.stringify({
       params
-      /*
-      channel: params.channel,
-      enable: params.enable
-    */
     }),
     headers: {
       "Content-Type": "application/json;"
@@ -55,7 +52,5 @@ function set_channel(params) {
         document.getElementById(alternate_button_id).disabled = false;
         })
     }
-  }).catch(function(error) {
-    console.error(error)
-  });
+  }).catch(error => console.error(error));
 }

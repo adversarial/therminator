@@ -4,6 +4,8 @@
     <title>Therminator</title>
     <link rel="stylesheet" href="default.css">
     <script src="default.js" defer></script>  
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>    
     
@@ -15,35 +17,36 @@
     </p>
 
     <table border = 0>
-      <tr>
-        <td><button type="button" onclick="set_channel([{channel : 0, enable : 0}, {channel: 1, enable: 0}, {channel: 2, enable: 0}, {channel: 3, enable: 0}])">All Off</button></td>
-      </tr>
-  </table>
+        <tr><button type="button" onclick="set_channel([{channel : 0, enable : 0}, {channel: 1, enable: 0}, {channel: 2, enable: 0}, {channel: 3, enable: 0}])">All Off</button></th>
+        <tr><button type="button" onclick="set_channel([{channel : 0, enable: 0}, {channel: 1, enable: 1}, {channel: 2, enable: 0}, {channel: 3, enable : 0}])">First Stage</button></th>
+        <tr><button type="button" onclick="set_channel([{channel : 0, enable: 0}, {channel: 1, enable: 1}, {channel: 2, enable: 1}, {channel: 3, enable : 0}])">Second Stage</button></th>
+        <tr><input type="checkbox" name="ActivateGOB" label="Activate G/O/B" value="0">Activate G/O/B</input></tr>
+    </table>
 
     <table border=1>
         <tr>
-            <td>R</td>
-            <td>W1</td>
-            <td>W2</td>
-            <td>G</td>
+            <th id="channel0_label">R (PWR ⚠)</th>
+            <th id="channel1_label">W1/Y1</th>
+            <th id="channel2_label">W2/Y2</th>
+            <th id="channel3_label">G/O/B </th>
         </tr>
         <tr>
             <td>
-                 <button id="button_channel0" onclick="set_channel([{channel : 0, enable : 1}])">ON</button>
+                 <button id="button_channel0" onclick="set_channel([{channel : 0, enable : 1}])">ON ⚠</button>
                  <br>
-                <button id="button_channel0_disable" disabled onclick="set_channel([{channel : 0, enable : 0}])">OFF</button>
+                 <button id="button_channel0_disable" disabled onclick="set_channel([{channel : 0, enable : 0}])">OFF</button>
             </td>
-            <td>
+            <td id="channel1_control">
                  <button id="button_channel1" onclick="set_channel([{channel : 1, enable : 1}])">ON</button>
                  <br>
                  <button id="button_channel1_disable" disabled onclick="set_channel([{channel : 1, enable : 0}])">OFF</button>
             </td>
-            <td>
+            <td  id="channel2_control">
                 <button id="button_channel2" onclick="set_channel([{channel : 2, enable : 1}])">ON</button>
                 <br>
                 <button id="button_channel2_disable" disabled onclick="set_channel([{channel : 2, enable : 0}])">OFF</button>
             </td>
-            <td>
+            <td  id="channel3_control">
                <button id="button_channel3" onclick="set_channel([{channel : 3, enable : 1}])">ON</button>
                <br>
                <button id="button_channel3_disable" disabled onclick="set_channel([{channel : 3, enable : 0}])">OFF</button>

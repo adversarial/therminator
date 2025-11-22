@@ -128,19 +128,6 @@ async def error(request, code, reason):
     await request.write("<h1>%s</h1>" % (reason))
 
 
-async def send_file(request, filename, segment=64, binary=False):
-    try:
-        with open(filename, 'rb' if binary else 'r') as f:
-            while True:
-                data = f.read(segment)
-                if not data:
-                    break
-                await request.write(data)
-    except OSError as e:
-        if e.args[0] != uerrno.ENOENT:
-            raise
-        raise HttpError(request, 404, "File Not Found")
-
 
 class Nanoweb:
 
@@ -283,6 +270,21 @@ class Nanoweb:
 
     async def run(self):
         return await asyncio.start_server(self.handle, self.address, self.port)
+    
+
+async def send_file(request, filename, segment=64, binary=False):
+    try:
+        with open(filename, 'rb' if binary else 'r') as f:
+            while True:
+                data = f.read(segment)
+                if not data:
+                    break
+                await request.write(data)
+    except OSError as e:
+        if e.args[0] != uerrno.ENOENT:
+            raise
+        raise HttpError(request, 404, "File Not Found")
+
 
 from ubinascii import a2b_base64 as base64_decode
 
