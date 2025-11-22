@@ -11,10 +11,15 @@
     
     <h1>Therminator Control Panel</h1>
 
-    <h2>Status</h2>
+    <h2>Status: <span id="label_relay_pwr_status">not initialized</span></h2>
     <p class="alert alerti-info" role="alert">
         Set switches in real time or use preset modes.
     </p>
+
+    <table border = 0>
+        <tr><button type="button" disabled id="button_enable_relay_pwr" onclick="enablechannelpwr()">Enable virtual thermostat</button></tr>
+        <tr><button type="button" disabled id="button_disable_relay_pwr" onclick="disablechannelpwr()">Disable virtual thermostat</button></tr>
+    </table>
 
     <table border = 0>
         <tr><button type="button" onclick="set_channel([{channel : 0, enable : 0}, {channel: 1, enable: 0}, {channel: 2, enable: 0}, {channel: 3, enable: 0}])">All Off</button></th>
@@ -32,24 +37,24 @@
         </tr>
         <tr>
             <td>
-                 <button id="button_channel0" onclick="set_channel([{channel : 0, enable : 1}])">ON ⚠</button>
+                 <button type="button" disabled id="button_channel0" onclick="set_channel([{channel : 0, enable : 1}])">ON ⚠</button>
                  <br>
-                 <button id="button_channel0_disable" disabled onclick="set_channel([{channel : 0, enable : 0}])">OFF</button>
+                 <button type="button" disabled id="button_channel0_disable" disabled onclick="set_channel([{channel : 0, enable : 0}])">OFF</button>
             </td>
             <td id="channel1_control">
-                 <button id="button_channel1" onclick="set_channel([{channel : 1, enable : 1}])">ON</button>
+                 <button type="button" disabled id="button_channel1" onclick="set_channel([{channel : 1, enable : 1}])">ON</button>
                  <br>
-                 <button id="button_channel1_disable" disabled onclick="set_channel([{channel : 1, enable : 0}])">OFF</button>
+                 <button type="button" disabled id="button_channel1_disable" disabled onclick="set_channel([{channel : 1, enable : 0}])">OFF</button>
             </td>
             <td  id="channel2_control">
-                <button id="button_channel2" onclick="set_channel([{channel : 2, enable : 1}])">ON</button>
+                <button type="button" disabled id="button_channel2" onclick="set_channel([{channel : 2, enable : 1}])">ON</button>
                 <br>
-                <button id="button_channel2_disable" disabled onclick="set_channel([{channel : 2, enable : 0}])">OFF</button>
+                <button type="button" disabled id="button_channel2_disable" disabled onclick="set_channel([{channel : 2, enable : 0}])">OFF</button>
             </td>
             <td  id="channel3_control">
-               <button id="button_channel3" onclick="set_channel([{channel : 3, enable : 1}])">ON</button>
+               <button type="button" disabled id="button_channel3" onclick="set_channel([{channel : 3, enable : 1}])">ON</button>
                <br>
-               <button id="button_channel3_disable" disabled onclick="set_channel([{channel : 3, enable : 0}])">OFF</button>
+               <button type="button" disabled id="button_channel3_disable" disabled onclick="set_channel([{channel : 3, enable : 0}])">OFF</button>
             </td>
         </tr>
     </table>

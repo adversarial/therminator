@@ -11,7 +11,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
-
 import machine
 import utime
 
@@ -22,11 +21,13 @@ PIN_SW4 = 15
 
 PIN_EXT_PWR_ENABLE = 22
 
+MAX_RELAY_POWER_TIMEOUT_MS = 60*60*1000 # one hour in ms
+
 cooling_ids = ('R', 'Y', 'Y2', 'O/B/G')
 heating_ids = ('R', 'W', 'W2', 'G')
 
 class external_power_manager:
-    def __init__(self, gpio_id = PIN_EXT_PWR_ENABLE, enabled = False, timeout = 30*60*1000):
+    def __init__(self, gpio_id = PIN_EXT_PWR_ENABLE, enabled = False, timeout = MAX_RELAY_POWER_TIMEOUT_MS):
 
         self.gpio_id = gpio_id
         self.pin = machine.Pin(gpio_id, 
@@ -45,11 +46,14 @@ class external_power_manager:
                         callback = channel_timeout_callback)
 
     def disable(self):
-        if self.pin.value == 0:
+        if self.pin.value() == 0:
             return 
         
         self.pin.value(0)
         self.timer.deinit()
+
+    def query(self):
+        return self.pin.value()
 
 class channel:
     def __init__(self, pin, initial_value = None, id = None):

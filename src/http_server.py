@@ -31,7 +31,7 @@ CREDENTIALS = ('098765432123456', # user
 WEB_ASSETS_DIR = './www/'
 STORED_LOGS_DIR = './www/logs/'
 
-MAX_REQUEST_HANDLERS = 10
+MAX_REQUEST_HANDLERS = 4 # the webpage is very static
 MAX_REQUEST_MS = 100 # we don't need a fast server, and want to prevent rapidfiring of relays
 
 http_server = Nanoweb()
@@ -101,6 +101,8 @@ async def api_query_relay_power(request):
     
     await request.write("HTTP/1.1 200 OK\r\n")
     await request.write("Content-Type: application/json\r\n\r\n")
+    relay_pwr_status = '[ ' + f'{{ "value": {channels.channel_power.query()} }}' + ' ]'
+    await request.write(relay_pwr_status)
 
 # Process a request to set channel states
 # ie [ {i, 0}, {j, 1}, {k, 1} ]

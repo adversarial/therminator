@@ -42,7 +42,9 @@ async def create_autofeeder():
     global watchdog_timer
 
     autofeeder = machine.Timer(-1)
-    autofeeder.init(mode = machine.Timer.PERIODIC, period = int(watchdog_timer._timeout / 4), callback = autofeeder_callback)
+    autofeeder.init(mode = machine.Timer.PERIODIC, 
+                    period = watchdog_timer._timeout >> 2, # timeout/4 to ensure we don't miss
+                    callback = autofeeder_callback)
 
 def autofeeder_callback(t: machine.Timer):
     global watchdog_timer
