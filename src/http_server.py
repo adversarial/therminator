@@ -66,6 +66,42 @@ async def api_shutdown(request):
 
     print("Shutdown requested")
 
+@HTTP_DOS_Guard
+@authenticate(credentials=CREDENTIALS)
+@http_server.route("/api/set_relay_pwr")
+async def api_set_relay_power(request):
+    if request.method != "POST":
+        raise HttpError(request, 501, "Not Implemented")
+    
+    await request.write("HTTP/1.1 200 OK\r\n")
+
+    try:
+        content_length = int(request.headers['Content-Length'])
+        content_type = request.headers['Content-Type']
+    except KeyError:
+        raise HttpError(request, 400, "Bad Request")
+    
+    if 'application/json' not in content_type:
+        raise HttpError(request, 501, "Not Implemented")
+    
+    data = json.loads(await request.read(content_length)).decode()
+    if data == ('1',):
+        channels.channel_power.enable()
+    elif data == ('0',):
+        channels.channel_power.disable()
+    else:
+        raise HttpError(request, 400, "Bad Request")
+
+@HTTP_DOS_Guard
+@authenticate(credentials=CREDENTIALS)
+@http_server.route("/api/get_relay_pwr")
+async def api_query_relay_power(request):
+    if request.method != "GET":
+        raise HttpError(request, 501, "Not Implemented")
+    
+    await request.write("HTTP/1.1 200 OK\r\n")
+    await request.write("Content-Type: application/json\r\n\r\n")
+
 # Process a request to set channel states
 # ie [ {i, 0}, {j, 1}, {k, 1} ]
 # -> disable i, enable j, k
@@ -74,7 +110,6 @@ async def api_shutdown(request):
 @authenticate(credentials=CREDENTIALS)
 @http_server.route("/api/set_channel_states")
 async def api_set_channel_states(request):
-    print("set")
     await request.write("HTTP/1.1 200 OK\r\n")
 
     if request.method != "POST":
@@ -112,14 +147,18 @@ async def api_set_channel_states(request):
 @authenticate(credentials=CREDENTIALS)
 @http_server.route("/api/get_channel_states")
 async def api_get_channel_states(request):
-    print("get")
     if request.method != "GET":
         raise HttpError(request, 501, "Not Implemented")
     
     await request.write("HTTP/1.1 200 OK\r\n")
     await request.write("Content-Type: application/json\r\n\r\n")
 
-    channel_status = '[ ' + ', '.join(f'{{"channel": {i}, "enable": {c.value()} }}' for i, c in channels.enumerate()) + ' ]'
+    # [ 
+    #     { channel: 1, enable: 0 }, 
+    #     { channel: 0, enable: 1 }, 
+    #     { ... } 
+    # ]
+    channel_status = '[ ' + ', '.join(f'{{"channel": {i}, "enable": {c} }}' for i, c in channels.enumerate()) + ' ]'
     await request.write(channel_status)
 
 @HTTP_DOS_Guard

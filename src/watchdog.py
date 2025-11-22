@@ -27,7 +27,7 @@ class WatchdogTimer:
 
     def __init__(self, timeout = RP20xx_MAX_WATCHDOG_TIMEOUT, autofeed = True):
         self._timeout = timeout if timeout in range(0, RP20xx_MAX_WATCHDOG_TIMEOUT) else RP20xx_MAX_WATCHDOG_TIMEOUT
-        self._timer = WDT(id = 1, timeout = self._timeout)
+        self._timer = WDT(timeout = self._timeout)
         self.feed()
 
         if autofeed:
