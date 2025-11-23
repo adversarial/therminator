@@ -12,29 +12,18 @@
 # GNU General Public License for more details.
 
 import uasyncio
-import machine 
-import network
-import utime
 
-from src.http_server import http_server
-import src.watchdog as watchdog
+import source.config as config
+from source.access import access_point
+from source.http_server import http_server
+from source.board import onboard_led
 
-ssid = 'thermoset'
-password = '1234567890'
-
-onboard_led = machine.Pin("LED", machine.Pin.OUT)
-
-watchdog.watchdog_timer.feed()
-
-print("Initializing...")
 onboard_led.on()
-ap = network.WLAN(network.AP_IF)
-ap.config(ssid = ssid, key = password, security = 4) # 4 = WPA2 (insecure, highest supported)
-ap.active(True)
-utime.sleep_ms(250)
-assert(ap.active())
+print("Initializing...")
+config.parse_config()
 
 loop = uasyncio.get_event_loop()
+loop.create_task(access_point.run())
 loop.create_task(http_server.run())
-print(f'Started webserver at {ap.ifconfig()[0]}')
+print(f'Started webserver at {access_point.ap().ifconfig()[0]}')
 loop.run_forever()

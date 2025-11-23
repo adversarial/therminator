@@ -17,34 +17,29 @@ import json
 import utime
 import uasyncio
 
-
-PIN_SW1 = 12
-PIN_SW2 = 13
-PIN_SW3 = 14
-PIN_SW4 = 15
-
-from src.channeler import channels
-
-CREDENTIALS = ('098765432123456', # user
-               '123456789098765') # pass
-
-WEB_ASSETS_DIR = './www/'
-STORED_LOGS_DIR = './www/logs/'
-
-MAX_REQUEST_HANDLERS = 4 # the webpage is very static
-MAX_REQUEST_MS = 100 # we don't need a fast server, and want to prevent rapidfiring of relays
-
 http_server = Nanoweb()
-last_request = utime.ticks_ms()
-request_semaphore = uasyncio.Semaphore(MAX_REQUEST_HANDLERS)
 
-def HTTP_DOS_Guard(func):
+from source.channeler import channels
+
+API_CREDENTIALS = (None, # user
+               None) # pass
+
+WEB_ASSETS_DIR = None
+STORED_LOGS_DIR = None
+
+MAX_API_REQUEST_HANDLERS = 1 # the webpage is very static
+MAX_API_REQUEST_MS = 50 # we don't need a fast server, and want to prevent rapidfiring of relays
+
+last_request = utime.ticks_ms()
+request_semaphore = uasyncio.Semaphore(MAX_API_REQUEST_HANDLERS)
+
+def API_DOS_Guard(func):
     async def decorator(*args, **kwargs):
         global last_request
         await request_semaphore.acquire()
 
-        while utime.ticks_diff(utime.ticks_ms(), last_request) < MAX_REQUEST_MS:
-            await uasyncio.sleep_ms(MAX_REQUEST_MS / 4)
+        while utime.ticks_diff(utime.ticks_ms(), last_request) < MAX_API_REQUEST_MS:
+            await uasyncio.sleep_ms(MAX_API_REQUEST_MS / 4)
 
         try:
             result = await func(*args, **kwargs)
@@ -55,8 +50,8 @@ def HTTP_DOS_Guard(func):
         return result
     return decorator
 
-@HTTP_DOS_Guard
-@authenticate(credentials=CREDENTIALS)
+@API_DOS_Guard
+@authenticate(credentials=API_CREDENTIALS)
 @http_server.route("/api/shutdown")
 async def api_shutdown(request):
     await request.write("HTTP/1.1 200 OK\r\n")
@@ -66,8 +61,8 @@ async def api_shutdown(request):
 
     print("Shutdown requested")
 
-@HTTP_DOS_Guard
-@authenticate(credentials=CREDENTIALS)
+@API_DOS_Guard
+@authenticate(credentials=API_CREDENTIALS)
 @http_server.route("/api/set_relay_pwr")
 async def api_set_relay_power(request):
     if request.method != "POST":
@@ -85,15 +80,16 @@ async def api_set_relay_power(request):
         raise HttpError(request, 501, "Not Implemented")
     
     data = json.loads(await request.read(content_length)).decode()
-    if data == ('1',):
+    print(data)
+    if data.value == ('1',):
         channels.channel_power.enable()
-    elif data == ('0',):
+    elif data.value == ('0',):
         channels.channel_power.disable()
     else:
         raise HttpError(request, 400, "Bad Request")
 
-@HTTP_DOS_Guard
-@authenticate(credentials=CREDENTIALS)
+@API_DOS_Guard
+@authenticate(credentials=API_CREDENTIALS)
 @http_server.route("/api/get_relay_pwr")
 async def api_query_relay_power(request):
     if request.method != "GET":
@@ -102,14 +98,15 @@ async def api_query_relay_power(request):
     await request.write("HTTP/1.1 200 OK\r\n")
     await request.write("Content-Type: application/json\r\n\r\n")
     relay_pwr_status = '[ ' + f'{{ "value": {channels.channel_power.query()} }}' + ' ]'
+    print(relay_pwr_status)
     await request.write(relay_pwr_status)
 
 # Process a request to set channel states
 # ie [ {i, 0}, {j, 1}, {k, 1} ]
 # -> disable i, enable j, k
 # TODO correct processing to iterate [ {,},{,} ] along with {,}
-@HTTP_DOS_Guard
-@authenticate(credentials=CREDENTIALS)
+@API_DOS_Guard
+@authenticate(credentials=API_CREDENTIALS)
 @http_server.route("/api/set_channel_states")
 async def api_set_channel_states(request):
     await request.write("HTTP/1.1 200 OK\r\n")
@@ -145,8 +142,8 @@ async def api_set_channel_states(request):
 
 # Responds to request with json dump of channel ids and states 
 # ie [ {i, a}, {j, b},... {y, z} ]
-@HTTP_DOS_Guard
-@authenticate(credentials=CREDENTIALS)
+@API_DOS_Guard
+@authenticate(credentials=API_CREDENTIALS)
 @http_server.route("/api/get_channel_states")
 async def api_get_channel_states(request):
     if request.method != "GET":
@@ -163,14 +160,12 @@ async def api_get_channel_states(request):
     channel_status = '[ ' + ', '.join(f'{{"channel": {i}, "enable": {c} }}' for i, c in channels.enumerate()) + ' ]'
     await request.write(channel_status)
 
-@HTTP_DOS_Guard
 @http_server.route("/")
 async def homepage(request):
     print(request)
     await request.write("HTTP/1.1 200 OK\r\n\r\n")
     await send_file(request, f'{WEB_ASSETS_DIR}/index.html')
     
-@HTTP_DOS_Guard 
 @http_server.route("/ping")
 async def ping(request):
     await request.write("HTTP/1.1 200 OK\r\n\r\n")

@@ -11,11 +11,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 
-
-import machine
-from machine import WDT
-import utime
-import uasyncio
+from machine import WDT, Timer
 
 # in case of a fault causing all of MCU to hang (like in IRQ) this will reset hardware
 
@@ -23,38 +19,31 @@ import uasyncio
 # Notes: On the esp8266 a timeout cannot be specified, it is determined by the underlying system. On rp2040 devices, the maximum timeout is 8388 ms.
 RP20xx_MAX_WATCHDOG_TIMEOUT = 8388
 
+class dummywdt:
+    def __init__(self, id = None, timeout = None):
+        pass
+    def feed(self):
+        pass
+
 class WatchdogTimer:
 
-    def __init__(self, timeout = RP20xx_MAX_WATCHDOG_TIMEOUT, autofeed = True):
+    def __init__(self, timeout = RP20xx_MAX_WATCHDOG_TIMEOUT, feeder_callback = None):
         self._timeout = timeout if timeout in range(0, RP20xx_MAX_WATCHDOG_TIMEOUT) else RP20xx_MAX_WATCHDOG_TIMEOUT
-        self._timer = WDT(timeout = self._timeout)
-        self.feed()
+        self._timer = dummywdt()
+        self._feeder = feeder_callback
 
-        if autofeed:
-            uasyncio.create_task(create_autofeeder())
+    def start(self, feeder_callback = None):
+        self._timer = WDT(timeout=self._timeout)
+        if feeder_callback:
+            self.create_feeder(feeder_callback)
+
+    def create_feeder(self, callback):
+        autofeeder = Timer(-1)
+        autofeeder.init(mode = Timer.PERIODIC, 
+                        period = self._timeout >> 2, # timeout/4 to ensure we don't miss
+                        callback = callback)
 
     def feed(self):
         self._timer.feed()
 
 watchdog_timer = WatchdogTimer()
-
-async def create_autofeeder():
-    global watchdog_timer
-
-    autofeeder = machine.Timer(-1)
-    autofeeder.init(mode = machine.Timer.PERIODIC, 
-                    period = watchdog_timer._timeout >> 2, # timeout/4 to ensure we don't miss
-                    callback = autofeeder_callback)
-
-def autofeeder_callback(t: machine.Timer):
-    global watchdog_timer
-
-    watchdog_timer.feed()
-
-def Watchdog_Feeder(func):
-    def wrapper(*args, **kwargs):
-        watchdog_timer.feed()
-        result = func(*args, **kwargs)
-        watchdog_timer.feed()
-        return result
-    return wrapper
