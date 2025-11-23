@@ -12,18 +12,24 @@
 # GNU General Public License for more details.
 
 import uasyncio
+from machine import reset
 
 import source.config as config
 from source.access import access_point
-from source.http_server import http_server
 from source.board import onboard_led
+from source.http_server import http_server
 
 onboard_led.on()
 print("Initializing...")
 config.parse_config()
+print("Starting services...")
+try:
+    assert uasyncio.run(access_point.run())
+    assert uasyncio.run(http_server.run())
+except Exception as e:
+    print(e)
+    reset()
 
+print(f'Started access point {access_point.name()} with key {access_point.key()} with webpage at http://{access_point.ap().ifconfig()[0]}')
 loop = uasyncio.get_event_loop()
-loop.create_task(access_point.run())
-loop.create_task(http_server.run())
-print(f'Started webserver at {access_point.ap().ifconfig()[0]}')
 loop.run_forever()

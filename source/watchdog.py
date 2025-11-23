@@ -27,13 +27,14 @@ class dummywdt:
 
 class WatchdogTimer:
 
-    def __init__(self, timeout = RP20xx_MAX_WATCHDOG_TIMEOUT, feeder_callback = None):
+    def __init__(self, id = 0, timeout = RP20xx_MAX_WATCHDOG_TIMEOUT, feeder_callback = None):
         self._timeout = timeout if timeout in range(0, RP20xx_MAX_WATCHDOG_TIMEOUT) else RP20xx_MAX_WATCHDOG_TIMEOUT
         self._timer = dummywdt()
         self._feeder = feeder_callback
+        self._id = id
 
     def start(self, feeder_callback = None):
-        self._timer = WDT(timeout=self._timeout)
+        self._timer = WDT(id = self._id, timeout=self._timeout)
         if feeder_callback:
             self.create_feeder(feeder_callback)
 
@@ -46,4 +47,5 @@ class WatchdogTimer:
     def feed(self):
         self._timer.feed()
 
-watchdog_timer = WatchdogTimer()
+ap_watchdog = WatchdogTimer(id=1)
+http_watchdog = WatchdogTimer(id=2)
