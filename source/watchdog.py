@@ -17,20 +17,20 @@ from machine import WDT, Timer
 
 # implement https://docs.micropython.org/en/latest/library/machine.WDT.html for pi pico 
 # Notes: On the esp8266 a timeout cannot be specified, it is determined by the underlying system. On rp2040 devices, the maximum timeout is 8388 ms.
+ESP82xx_MAX_WATCHDOG_TIMEOUT = None
 RP20xx_MAX_WATCHDOG_TIMEOUT = 8388
 
+# uPy.WDT timer immediately starts, this lets object be instantiated now and start later 
 class dummywdt:
     def __init__(self, id = None, timeout = None):
         pass
     def feed(self):
         pass
 
-class WatchdogTimer:
-
-    def __init__(self, id = 0, timeout = RP20xx_MAX_WATCHDOG_TIMEOUT, feeder_callback = None):
-        self._timeout = timeout if timeout in range(0, RP20xx_MAX_WATCHDOG_TIMEOUT) else RP20xx_MAX_WATCHDOG_TIMEOUT
+class WatchdogTimer: # at least every 8 seconds services must respond or board will reset
+    def __init__(self, id = 0, timeout = RP20xx_MAX_WATCHDOG_TIMEOUT):
+        self._timeout = timeout if timeout in range(0, RP20xx_MAX_WATCHDOG_TIMEOUT + 1) else RP20xx_MAX_WATCHDOG_TIMEOUT
         self._timer = dummywdt()
-        self._feeder = feeder_callback
         self._id = id
 
     def start(self, feeder_callback = None):
@@ -41,11 +41,12 @@ class WatchdogTimer:
     def create_feeder(self, callback):
         autofeeder = Timer(-1)
         autofeeder.init(mode = Timer.PERIODIC, 
-                        period = self._timeout >> 2, # timeout/4 to ensure we don't miss
+                        period = self._timeout >> 2, # timeout/4, ~2 sec on RP20xx
                         callback = callback)
 
     def feed(self):
         self._timer.feed()
 
+# exports
 ap_watchdog = WatchdogTimer(id=1)
 http_watchdog = WatchdogTimer(id=2)

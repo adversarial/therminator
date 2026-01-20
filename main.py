@@ -15,21 +15,25 @@ import uasyncio
 from machine import reset
 
 import source.config as config
-from source.access import access_point
-from source.board import onboard_led
-from source.http_server import http_server
+import source.board as board
+from source.access_point import access_point
+from source.http_page import http_server
 
-onboard_led.on()
+uasyncio.create_task(board.blink_led(period_ms=1000, rate_ms=200))
 print("Initializing...")
 config.parse_config()
 print("Starting services...")
+
 try:
-    assert uasyncio.run(access_point.run())
-    assert uasyncio.run(http_server.run())
+    uasyncio.run(access_point.run())
+    uasyncio.run(http_server.run())
 except Exception as e:
     print(e)
     reset()
+    
+print(f'Started access point {access_point.name()} with key {access_point.key()}')
+print(f'Started webpage at http://{access_point.ap().ifconfig()[0]}')
+uasyncio.create_task(board.blink_led(period_ms=10000, rate_ms=1000))
 
-print(f'Started access point {access_point.name()} with key {access_point.key()} with webpage at http://{access_point.ap().ifconfig()[0]}')
 loop = uasyncio.get_event_loop()
 loop.run_forever()

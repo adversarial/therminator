@@ -19,7 +19,7 @@ function enablechannelpwr() {
     }
     document.getElementById("button_enable_relay_pwr").disabled = true
     document.getElementById("button_disable_relay_pwr").disabled = false
-    document.getElementById("label_relay_pwr_status").innerHTML = "<span style='color: red; font-weight: bold'>ON</span>"
+    document.getElementById("label_relay_pwr_status").innerHTML = "<span style='color: red; font-weight: bold'>ON ⚠</span>"
   }).catch(error => console.error(error));
 }
 
@@ -36,7 +36,7 @@ function disablechannelpwr() {
     }
     document.getElementById("button_enable_relay_pwr").disabled = false
     document.getElementById("button_disable_relay_pwr").disabled = true
-    document.getElementById("label_relay_pwr_status").innerHTML = "<span style='color: green; font-weight: bold'>off</span>"
+    document.getElementById("label_relay_pwr_status").innerHTML = "<span style='font-weight: bold'>off</span>"
   }).catch(error => console.error(error));
 }
 
@@ -55,7 +55,7 @@ function initChannelPwrStates() {
       if (value.value === 1) {
         document.getElementById("button_enable_relay_pwr").disabled = true
         document.getElementById("button_disable_relay_pwr").disabled = false
-        document.getElementById("label_relay_pwr_status").innerHTML = "<span style='color: red; font-weight: bold;'>ON</span>"
+        document.getElementById("label_relay_pwr_status").innerHTML = "<span style='color: red; font-weight: bold;'>ON ⚠</span>"
       } else if (value.value === 0) {
         document.getElementById("button_enable_relay_pwr").disabled = false
         document.getElementById("button_disable_relay_pwr").disabled = true

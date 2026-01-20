@@ -12,26 +12,40 @@
 # GNU General Public License for more details.
 
 from nanoweb.nanoweb import Nanoweb, HttpError, send_file, authenticate
-import machine
+
+from watchdog import http_watchdog
+from source.channeler import channels
+
 import json
 import utime
 import uasyncio
 
-http_server = Nanoweb()
-
-from source.channeler import channels
-
-API_CREDENTIALS = (None, # user
-               None) # pass
-
+### initialized by config
 WEB_ASSETS_DIR = None
 STORED_LOGS_DIR = None
+ENABLE_WATCHDOG = False
+API_CREDENTIALS = (None, # user
+               None) # pass
+###
 
 MAX_API_REQUEST_HANDLERS = 1 # the webpage is very static
 MAX_API_REQUEST_MS = 50 # we don't need a fast server, and want to prevent rapidfiring of relays
 
 last_request = utime.ticks_ms()
 request_semaphore = uasyncio.Semaphore(MAX_API_REQUEST_HANDLERS)
+
+# the original nanoweb does not include a way to access the 
+class tNanoweb(Nanoweb):
+    def __init__(self, port=80, address='0.0.0.0'):
+        return super().__init__(port, address)
+    
+    async def run(self):
+        self.server = await super().run()
+        if ENABLE_WATCHDOG:
+            http_watchdog.start(check_webserver)
+        return self.server
+
+http_server = tNanoweb()
 
 def API_DOS_Guard(func):
     async def decorator(*args, **kwargs):
@@ -66,18 +80,20 @@ async def api_shutdown(request):
 @http_server.route("/api/set_relay_pwr")
 async def api_set_relay_power(request):
     if request.method != "POST":
-        raise HttpError(request, 501, "Not Implemented")
-    
-    await request.write("HTTP/1.1 200 OK\r\n")
-
+        await request.error(request, 501, "Not Implemented")
+        return
     try:
         content_length = int(request.headers['Content-Length'])
         content_type = request.headers['Content-Type']
     except KeyError:
-        raise HttpError(request, 400, "Bad Request")
+        await request.error(request, request, 400, "Bad Request")
+        return
     
     if 'application/json' not in content_type:
-        raise HttpError(request, 501, "Not Implemented")
+        await request.error(request, 501, "Not Implemented")
+        return
+
+    await request.write("HTTP/1.1 200 OK\r\n")
     
     data = json.loads(await request.read(content_length)).decode()
     print(data)
@@ -86,13 +102,16 @@ async def api_set_relay_power(request):
     elif data.value == ('0',):
         channels.channel_power.disable()
     else:
+        await request.error(request, 400, "Bad Request")
         raise HttpError(request, 400, "Bad Request")
+    
 
 @API_DOS_Guard
 @authenticate(credentials=API_CREDENTIALS)
 @http_server.route("/api/get_relay_pwr")
 async def api_query_relay_power(request):
     if request.method != "GET":
+        await request.error(request, 501, "Not Implemented")
         raise HttpError(request, 501, "Not Implemented")
     
     await request.write("HTTP/1.1 200 OK\r\n")
@@ -172,3 +191,7 @@ async def ping(request):
     await request.write("pong")
     print("pong")
 
+#watchdog check
+async def check_webserver(t):
+    if http_server.server.is_serving():
+        http_watchdog.feed()

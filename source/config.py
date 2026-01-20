@@ -21,7 +21,6 @@ def parse_config():
     parser.add_argument('configfilename', nargs = '?', default = 'config.ini', help = 'Specify an optional config file.')
     args = parser.parse_args()
 
-    config_ini = { }
     configfile = ConfigParser()
     configfile.read(args.configfilename)
 
@@ -29,19 +28,20 @@ def parse_config():
     # 5V relay uses 2-5Vin boost from 2-3xAA batteries, has enable pin that hard shuts off on low->ground
     board.PIN_5V_EXTERNAL_PWR_ENABLE = int(configfile['board']['PIN_5V_EXTERNAL_PWR_ENABLE'])
 
-    # optocoupler 4 channel relay can be triggered with 3.3V
+    # optocoupler 4 channel >27V AC relay triggered with 3.3V
     board.PIN_RELAY_SWITCH_0 = int(configfile['board']['PIN_RELAY_SWITCH_0'])
     board.PIN_RELAY_SWITCH_1 = int(configfile['board']['PIN_RELAY_SWITCH_1'])
     board.PIN_RELAY_SWITCH_2 = int(configfile['board']['PIN_RELAY_SWITCH_2'])
     board.PIN_RELAY_SWITCH_3 = int(configfile['board']['PIN_RELAY_SWITCH_3'])
 
-    import source.access as access
-    access.DEFAULT_SOFT_AP_SSID = configfile['access']['access_point_name']
-    access.DEFAULT_SOFT_AP_KEY = configfile['access']['access_point_key']
-    access.ENABLE_WATCHDOG = configfile.getboolean('access', 'enable_watchdog')
+    import source.access_point as access_point
+    access_point.DEFAULT_SOFT_AP_SSID = configfile['access']['access_point_name']
+    access_point.DEFAULT_SOFT_AP_KEY = configfile['access']['access_point_key']
+    access_point.ENABLE_WATCHDOG = configfile.getboolean('access', 'enable_watchdog')
     
-    import source.http_server as http_server
-    http_server.WEB_ASSETS_DIR = configfile['web']['assets_directory']
-    http_server.STORED_LOGS_DIR = configfile['web']['logs_directory']
-    http_server.API_CREDENTIALS = (configfile['api']['api_user'],
+    import source.http_page as http_page
+    http_page.WEB_ASSETS_DIR = configfile['webserver']['assets_directory']
+    http_page.STORED_LOGS_DIR = configfile['webserver']['logs_directory']
+    http_page.ENABLE_WATCHDOG = configfile.getboolean('webserver', 'enable_watchdog')
+    http_page.API_CREDENTIALS = (configfile['api']['api_user'],
                                    configfile['api']['api_key'])
