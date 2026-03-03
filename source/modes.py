@@ -180,8 +180,22 @@ class MultiStageUnit:
                 applicable_stages = Terminal.HEATING_STAGES if self._mode == UnitMode.HEATING else Terminal.COOLING_STAGES if self._mode == UnitMode.COOLING else None
                 stage_terminals = sorted([s for s in self._terminals if s.ttype in applicable_stages], 
                                          key = lambda s: s.to_stage())
-                # for each stage in 1 .. stage, check there is an existing terminal
-                if not all(any([s == t.to_stage() for t in stage_terminals]) for s in range(1, stage)):
+                
+                # check stages are set up properly ie no [ Stage 1, Stage 3 ]
+                if not all([j.to_stage() == i for i, j in enumerate(stage_terminals, start = 1)]):
+                    raise ValueError(f'Invalid configuration: stage missing.')
+
+                # check all pins for current stage are correctly enabled (in case of manual switching)
+                # in that case set our current stage to the lowest consecutive stage 
+                # ie [s1 = 1, s2 = 0, s3 = 1] highest valid stage is s[1] 
+                for i, j in enumerate(stage_terminals):
+                    if i in range(0, self._stage):
+                        if j.state() == 0:
+                            self._stage = i
+                    else:
+                        j.state(0)
+
+                if not all([s == stage_terminals[s].to_stage() for s in range(1, stage)]):
                     raise ValueError(f'Invalid stage {stage} provided. Available stages: {[s.ttype for s in stage_terminals]}')
                 
                 # stage_terminals is 0-indexed list of available stages
