@@ -68,7 +68,7 @@ class Terminal:
 
         def to_color(self):
             return DEFAULT_TERMINAL_COLORS[self]
-        
+    
     HEATING_STAGES = { TerminalType.W: 1, TerminalType.W_2: 2, TerminalType.W_3: 3 }
     COOLING_STAGES = { TerminalType.Y: 1, TerminalType.Y_2: 2, TerminalType.Y_3: 3 }
     STAGES = HEATING_STAGES | COOLING_STAGES
@@ -132,6 +132,9 @@ class TerminalArray:
     def set_channel(self, channel, value):
         self.terminals[channel].state(value)
 
+    def get_stage_terminals(self, mode):
+        raise NotImplementedError
+
 # for testing without loading ini 
 # default
 two_stage_heat_terminals = TerminalArray((Terminal(Terminal.Color.RED, Terminal.TerminalType.R_24V, 0), 
@@ -164,27 +167,42 @@ class MultiStageUnit:
         self._mode_lock = uasyncio.Semaphore(1)
 
 # change stage with small delay in increases (board will interpet simultaneously connected terminals as 1->long delay->2)
-    async def _change_stage(self, stage, cooldown_ms = None):
+    async def _change_stage(self, stage, cooldown_ms = 750):
         try:
             async with self._stage_lock:
-                if not stage:
+                if stage == 0:
                     self._terminals.set(Terminal.STAGES.keys(), 0)
                     return 
-                
+                elif stage == self._stage:
+                    log(f'Stage request is same as current stage {stage}.')
+                    return
+
                 applicable_stages = Terminal.HEATING_STAGES if self._mode == UnitMode.HEATING else Terminal.COOLING_STAGES if self._mode == UnitMode.COOLING else None
                 stage_terminals = sorted([s for s in self._terminals if s.ttype in applicable_stages], 
                                          key = lambda s: s.to_stage())
                 # for each stage in 1 .. stage, check there is an existing terminal
-                if not all(any([t.to_stage() == s for t in stage_terminals]) for s in range(1, stage)):
+                if not all(any([s == t.to_stage() for t in stage_terminals]) for s in range(1, stage)):
                     raise ValueError(f'Invalid stage {stage} provided. Available stages: {[s.ttype for s in stage_terminals]}')
                 
-                #stage_required_terminals = [self._mode.()[i] for i in range(0, stage)]
-                # add a promise that stage_n+1 switch is triggered after stage_n with small delay
+                # stage_terminals is 0-indexed list of available stages
+                # increasing all stages below, requires small cooldown
+                # ie from stage 1 to stage 3:
+                if stage > self._stage:
+                    for i in range(self._stage, stage): # [1, 2] stage_terminals[1] = stage 2, stage_terminals[2] = s3
+                        stage_terminals[i].state(1)
+                        await async_sleep_ms(cooldown_ms)
+                # disable all stages above
+                # ie from s3 to 0 (off):
+                # indices = [2, 1, 0] -> term[2] = s3, term[1] = s2, term[0] = s1 
+                elif stage < self._stage:
+                    for i in reversed(range(stage, self._stage)):
+                        stage_terminals[i].state(0)
+
+                self._stage = stage
+                return True
         except CancelledError as e:
             log(f'Stage change from {self._stage} to {stage} cancelled.')
             raise e
-        finally:
-            pass
 
 # init off current mode, wait for cooldown if not already off, change to desired mode and stage  
     async def _change_mode(self, mode, initial_stage = 0, cooldown_ms = None):
@@ -192,7 +210,7 @@ class MultiStageUnit:
             async with self._mode_lock:
                 match mode:
                     case self._mode:
-                        print('Mode change: matches current mode.')
+                        log('Mode change: matches current mode.')
                         return mode
                     case UnitMode.HEATING | UnitMode.COOLING | UnitMode.AUX:
                         pass
@@ -211,19 +229,15 @@ class MultiStageUnit:
             raise e
 
 # public function to control device
-    async def run(self, stage = 0, mode = UnitMode.UNSPECIFIED):
-        if mode == UnitMode.UNSPECIFIED:
-            if self._mode == UnitMode.UNSPECIFIED:
-                raise ValueError(f'No mode has been set for this MultiStageUnit.')
-            else:
-                mode = self._mode
+    async def run(self, stage, mode = UnitMode.UNSPECIFIED):
 
         async with self._run_lock:
+            if mode == UnitMode.UNSPECIFIED:
+                if self._mode == UnitMode.UNSPECIFIED:
+                    raise ValueError(f'No mode has been set for this MultiStageUnit.')
+                else:
+                    mode = self._mode
             await self._change_mode(mode, stage)
-
-            # old
-            previous_mode = self._mode
-            previous_stage = self._stage
 
     def has_stage(self, stage, mode = UnitMode.UNSPECIFIED):
         raise NotImplementedError
