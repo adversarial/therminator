@@ -16,6 +16,7 @@ from channeler import channel_manager
 
 from uasyncio import sleep_ms as async_sleep_ms, CancelledError
 from enum import Enum, Flag, auto
+from source.log import log
 
 import uasyncio
 
@@ -171,15 +172,16 @@ class MultiStageUnit:
                     return 
                 
                 applicable_stages = Terminal.HEATING_STAGES if self._mode == UnitMode.HEATING else Terminal.COOLING_STAGES if self._mode == UnitMode.COOLING else None
-                stage_terminals = [s for s in self._terminals if s.ttype in applicable_stages]
-                stage_terminals.sort(key=lambda s: s.to_stage())
-                if stage not in [s.to_stage() for s in stage_terminals]:
-                    raise ValueError(f'Invalid mode provided, stage {stage} not in terminals "{[t.ttype.name for t in self._terminals]}".')
+                stage_terminals = sorted([s for s in self._terminals if s.ttype in applicable_stages], 
+                                         key = lambda s: s.to_stage())
+                # for each stage in 1 .. stage, check there is an existing terminal
+                if not all(any([t.to_stage() == s for t in stage_terminals]) for s in range(1, stage)):
+                    raise ValueError(f'Invalid stage {stage} provided. Available stages: {[s.ttype for s in stage_terminals]}')
                 
                 #stage_required_terminals = [self._mode.()[i] for i in range(0, stage)]
                 # add a promise that stage_n+1 switch is triggered after stage_n with small delay
         except CancelledError as e:
-            print('Stage change cancelled.')
+            log(f'Stage change from {self._stage} to {stage} cancelled.')
             raise e
         finally:
             pass
@@ -205,7 +207,7 @@ class MultiStageUnit:
                 self._mode = mode
                 await self._change_stage(initial_stage)
         except CancelledError as e:
-            print('Mode change cancelled.')
+            log(f'Mode change from {self._mode.name} to {mode.name} cancelled.')
             raise e
 
 # public function to control device
@@ -223,38 +225,8 @@ class MultiStageUnit:
             previous_mode = self._mode
             previous_stage = self._stage
 
-            for t in self._terminals:
-                t.state(0)
-            self._mode = mode
-            
-            stage_terminals = [t for t in self._terminals if t.type in mode.get_stage_types()]
-            if not stage_terminals:
-                raise ValueError(f'Invalid mode provided, no stages of {self._mode.name} in terminals "{[t.ttype.name for t in self._terminals]}".')
-            
-            if stage not in [Terminal.STAGES[s] for s in stage_terminals]:
-                raise ValueError(f'No terminal with stage "{stage}".')
-            stage_terminals.sort(key = lambda x: Terminal.STAGES[x.ttype])
-            if stage > 0:
-                pass
-            if stage > 1:
-                pass
-            if stage > 2:
-                pass
-            # todo
-
     def has_stage(self, stage, mode = UnitMode.UNSPECIFIED):
-        pass
-    
-    def _run_stage(self, stage, mode):
-        stage_terminals = [t for t in self._terminals if t.type in mode.get_stage_types()] 
-        stages_available = [Terminal.STAGES[t] for t in stage_terminals]
-
-        if not all([Terminal.STAGES[t.ttype] for t in stage_terminals]):
-            pass
-        stage_terminals.sort(key = lambda x: Terminal.STAGES[x.ttype])
-
-    def _schedule_mode_switch_lockout(self):
-        pass
+        raise NotImplementedError
     
     def max_stage(self, mode = UnitMode.UNSPECIFIED):
         for t in self._terminals:
