@@ -13,7 +13,7 @@
 
 from machine import WDT, Timer
 
-# in case of a fault causing all of MCU to hang (like in IRQ) this will reset hardware
+# in case of a fault causing service of MCU to hang (like in IRQ) this will reset hardware
 
 # implement https://docs.micropython.org/en/latest/library/machine.WDT.html for pi pico 
 # Notes: On the esp8266 a timeout cannot be specified, it is determined by the underlying system. On rp2040 devices, the maximum timeout is 8388 ms.
@@ -38,10 +38,11 @@ class WatchdogTimer: # at least every 8 seconds services must respond or board w
         if feeder_callback:
             self.create_feeder(feeder_callback)
 
-    def create_feeder(self, callback):
+    def create_feeder(self, callback, frequency_ms = None):
         autofeeder = Timer(-1)
+        period = frequency_ms or int(self._timeout / 2) # ~4 sec on RP20xx
         autofeeder.init(mode = Timer.PERIODIC, 
-                        period = self._timeout >> 2, # timeout/4, ~2 sec on RP20xx
+                        period = period, 
                         callback = callback)
 
     def feed(self):

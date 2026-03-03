@@ -25,16 +25,16 @@ WEB_ASSETS_DIR = None
 STORED_LOGS_DIR = None
 ENABLE_WATCHDOG = False
 API_CREDENTIALS = (None, # user
-               None) # pass
+                   None) # pass
 ###
 
-MAX_API_REQUEST_HANDLERS = 1 # the webpage is very static
+MAX_API_REQUEST_HANDLERS = 4 # the webpage is very static
 MAX_API_REQUEST_MS = 50 # we don't need a fast server, and want to prevent rapidfiring of relays
 
 last_request = utime.ticks_ms()
 request_semaphore = uasyncio.Semaphore(MAX_API_REQUEST_HANDLERS)
 
-# the original nanoweb does not include a way to access the 
+# Nanoweb discards the underlying asyncio.server() created by .run() which can check status for watchdog
 class tNanoweb(Nanoweb):
     def __init__(self, port=80, address='0.0.0.0'):
         return super().__init__(port, address)
@@ -44,8 +44,16 @@ class tNanoweb(Nanoweb):
         if ENABLE_WATCHDOG:
             http_watchdog.start(check_webserver)
         return self.server
+    
+    async def is_serving(self): # yas
+        return self.server.is_serving()
 
 http_server = tNanoweb()
+
+#watchdog check timer event
+async def check_webserver(t):
+    if http_server.is_serving():
+        http_watchdog.feed()
 
 def API_DOS_Guard(func):
     async def decorator(*args, **kwargs):
@@ -53,7 +61,7 @@ def API_DOS_Guard(func):
         await request_semaphore.acquire()
 
         while utime.ticks_diff(utime.ticks_ms(), last_request) < MAX_API_REQUEST_MS:
-            await uasyncio.sleep_ms(MAX_API_REQUEST_MS / 4)
+            await uasyncio.sleep_ms(MAX_API_REQUEST_MS / MAX_API_REQUEST_HANDLERS)
 
         try:
             result = await func(*args, **kwargs)
@@ -114,11 +122,16 @@ async def api_query_relay_power(request):
         await request.error(request, 501, "Not Implemented")
         raise HttpError(request, 501, "Not Implemented")
     
-    await request.write("HTTP/1.1 200 OK\r\n")
-    await request.write("Content-Type: application/json\r\n\r\n")
-    relay_pwr_status = '[ ' + f'{{ "value": {channels.channel_power.query()} }}' + ' ]'
-    print(relay_pwr_status)
-    await request.write(relay_pwr_status)
+    response = json.dumps({ "value": f'{channels.channel_power.query()}' })
+
+    headers = ( "HTTP/1.1 200 OK\r\n"
+                "Content-Type: application/json\r\n"
+                f"Content-Length: {len(response)}\r\n\r\n"
+    )
+    
+#    relay_pwr_status = '[ ' + f'{{ "value": {channels.channel_power.query()} }}' + ' ]'
+    print(response)
+    await request.write(headers + response)
 
 # Process a request to set channel states
 # ie [ {i, 0}, {j, 1}, {k, 1} ]
@@ -176,7 +189,16 @@ async def api_get_channel_states(request):
     #     { channel: 0, enable: 1 }, 
     #     { ... } 
     # ]
+    #for channel, value in channels.enumerate():
+    #    pass
     channel_status = '[ ' + ', '.join(f'{{"channel": {i}, "enable": {c} }}' for i, c in channels.enumerate()) + ' ]'
+    response = channel_status
+
+    headers = ( "HTTP/1.1 200 OK\r\n"
+                "Content-Type: application/json\r\n"
+                f"Content-Length: {len(response)}\r\n\r\n"
+    )
+    
     await request.write(channel_status)
 
 @http_server.route("/")
@@ -190,8 +212,3 @@ async def ping(request):
     await request.write("HTTP/1.1 200 OK\r\n\r\n")
     await request.write("pong")
     print("pong")
-
-#watchdog check
-async def check_webserver(t):
-    if http_server.server.is_serving():
-        http_watchdog.feed()

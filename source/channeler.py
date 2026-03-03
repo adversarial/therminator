@@ -52,6 +52,12 @@ class external_power_manager:
 
     def query(self):
         return self._pin.value()
+    
+def channel_timeout_callback(t: machine.Timer):
+    channels.channel_power._pin.value(0)
+    for channel in channels._channels:
+        channel.pin.value(0)
+    
 
 class channel:
     def __init__(self, pin, initial_value = None, id = None):
@@ -98,12 +104,17 @@ class channel_manager:
     def add_channel(self, pin, initital_value, id = "x"):
         self._channels.append(channel(pin, initital_value, id))
 
+# returns list of (index, value) pairs for json exporting to UI
     def enumerate(self):
         return [ (channel.get_gpio_id(), channel.get_value()) for channel in self._channels ]   
+
+    def channels(self):
+        return self._channels
 
     def get_channel_by_id(self, id) -> channel:
         return next(filter(lambda c: c.get_id().lower() == id.lower(), self._channels))
 
+    # ie ((0, 1), (2, 1), (3, 1)) or ((3, 1), )
     def set(self, channels, values):
         for channel, value in zip(channels, values):
             self.get_channel_by_id(channel).set(value)
@@ -116,8 +127,3 @@ class channel_manager:
 channels = channel_manager(pins = (board.PIN_RELAY_SWITCH_0, board.PIN_RELAY_SWITCH_1, board.PIN_RELAY_SWITCH_2, board.PIN_RELAY_SWITCH_3),
                            initial_values = (0, 0, 0, 0),
                            ids = DEFAULT_HEATING_IDS)
-
-def channel_timeout_callback(t: machine.Timer):
-    for channel in channels._channels:
-        channel.pin.value(0)
-    channels.channel_power._pin.value(0)

@@ -127,8 +127,6 @@ async def error(request, code, reason):
     await request.write("HTTP/1.1 %s %s\r\n\r\n" % (code, reason))
     await request.write("<h1>%s</h1>" % (reason))
 
-
-
 class Nanoweb:
 
     extract_headers = ('Authorization', 'Content-Length', 'Content-Type')
@@ -140,7 +138,7 @@ class Nanoweb:
     callback_request = None
     callback_error = staticmethod(error)
 
-    STATIC_DIR = './'
+    STATIC_DIR = './www/'
     INDEX_FILE = STATIC_DIR + 'index.html'
 
     def __init__(self, port=80, address='0.0.0.0'):
@@ -270,7 +268,7 @@ class Nanoweb:
 
     async def run(self):
         return await asyncio.start_server(self.handle, self.address, self.port)
-    
+        
 
 async def send_file(request, filename, segment=64, binary=False):
     try:

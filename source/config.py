@@ -18,11 +18,15 @@ import argparse
 def parse_config():
     parser = argparse.ArgumentParser(prog='therminator',
                                     description='Thermostat emulator')
-    parser.add_argument('configfilename', nargs = '?', default = 'config.ini', help = 'Specify an optional config file.')
+    parser.add_argument('cfg', nargs = '?', default = 'config.ini', help = 'Specify an optional config file.')
     args = parser.parse_args()
 
     configfile = ConfigParser()
     configfile.read(args.configfilename)
+
+    import source.log as log
+    log.ENABLE_ERROR_LOGGING = configfile.getboolean('debug', 'enable_logging')
+    log.LOG_FILE_PATH = configfile['debug']['log_file_path']
 
     import source.board as board
     # 5V relay uses 2-5Vin boost from 2-3xAA batteries, has enable pin that hard shuts off on low->ground

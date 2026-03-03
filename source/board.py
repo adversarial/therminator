@@ -13,6 +13,7 @@
 
 from uasyncio import sleep_ms as async_sleep_ms
 from utime import ticks_ms, ticks_diff
+from uasyncio import Semaphore, CancelledError, create_task
 ### initialized by config
 
 # 5V relay uses 2-5Vin boost from 2-3xAA batteries, has enable pin that hard shuts off on low->ground
@@ -25,12 +26,39 @@ PIN_RELAY_SWITCH_2 = None
 PIN_RELAY_SWITCH_3 = None
 
 from machine import Pin
-onboard_led = Pin("LED", Pin.OUT, value=0)
+onboard_led_pin = Pin("LED", Pin.OUT, value=0)
 
-# period_ms should be lower than ticks_diff max (undocumented)
-async def blink_led(led = onboard_led, period_ms = 7500, rate_ms = 750):
-    begin_ticks = ticks_ms()
-    while ticks_diff(begin_ticks, ticks_ms()) < period_ms:
-        led.toggle()
-        await async_sleep_ms(rate_ms)
-    led.off()
+class onboard_led_controller:
+    def __init__(self,
+                 led_pin = onboard_led_pin):
+        self.led = led_pin
+        self.current_task = None
+        self.blink_lock = Semaphore(1)
+
+# period_ms: amount of time to blink light, should be lower than TICKS_MAX (undocumented)
+# rate_ms: how often to toggle light
+
+    async def _blink_task(self, period_ms, rate_ms):
+        try:
+            async with self.blink_lock:
+                begin_ticks = ticks_ms()
+                while ticks_diff(begin_ticks, ticks_ms()) < period_ms:
+                    self.led.toggle()
+                    await async_sleep_ms(rate_ms)
+        except CancelledError as e: 
+            raise e
+        finally:
+            self.led.off()
+    
+    async def blink_led(self, period_ms = 7500, rate_ms = 750, override = False):
+        if override and self.current_task and not self.current_task.done():
+            self.current_task.cancel()
+    
+        self.current_task = await create_task(self._blink_task(period_ms, rate_ms))
+
+onboard_led = onboard_led_controller()
+
+class autopowersaver:
+    def __init__(self, timeout=30*60*1000):
+        pass
+    
