@@ -21,7 +21,7 @@ from source.http_page import http_server
 from source.log import log
 
 loop = uasyncio.get_event_loop()
-loop.create_task(onboard_led.blink_led(period_ms=3000, rate_ms=200))
+loop.create_task(onboard_led.blink(period_ms=3000, rate_ms=200))
 
 print("Initializing...")
 config.parse_config()
@@ -38,5 +38,5 @@ except Exception as e:
 print(f'Started access point {access_point.name()} with key {access_point.key()}')
 print(f'Started webpage at http://{access_point.ap().ifconfig()[0]}')
 
-loop.create_task(onboard_led.blink_led(period_ms=10000, rate_ms=1000))
+loop.create_task(onboard_led.blink(period_ms=10000, rate_ms=1000))
 loop.run_forever()

@@ -101,8 +101,13 @@ class Terminal:
         else:
             return UnitMode.UNSPECIFIED
 
-    def to_stage(self):
-        return self.STAGES.get(self.ttype) or None
+    def to_stage(self, mode = UnitMode.UNSPECIFIED):
+        if mode == UnitMode.UNSPECIFIED:
+            return self.STAGES.get(self.ttype) or 0
+        elif mode == UnitMode.COOLING:
+            return self.COOLING_STAGES.get(self.ttype) or 0
+        elif mode == UnitMode.HEATING:
+            return self.HEATING_STAGES.get(self.ttype) or 0
 
 class TerminalArray:
 
@@ -177,11 +182,12 @@ class MultiStageUnit:
                     log(f'Stage request is same as current stage {stage}.')
                     return
 
+                # select terminals that control function in this mode
                 applicable_stages = Terminal.HEATING_STAGES if self._mode == UnitMode.HEATING else Terminal.COOLING_STAGES if self._mode == UnitMode.COOLING else None
                 stage_terminals = sorted([s for s in self._terminals if s.ttype in applicable_stages], 
                                          key = lambda s: s.to_stage())
                 
-                # check stages are set up properly ie no [ Stage 1, Stage 3 ]
+                # check stages are set up properly ie [ x1, x2, x3 ] no [ x1, x3 ]
                 if not all([j.to_stage() == i for i, j in enumerate(stage_terminals, start = 1)]):
                     raise ValueError(f'Invalid configuration: stage missing.')
 
@@ -191,6 +197,7 @@ class MultiStageUnit:
                 for i, j in enumerate(stage_terminals):
                     if i in range(0, self._stage):
                         if j.state() == 0:
+                            log(f'Invalid configuration: terminal {i + 1} was disabled. Lowering mode stage to {i}')
                             self._stage = i
                     else:
                         j.state(0)
@@ -200,14 +207,11 @@ class MultiStageUnit:
                 
                 # stage_terminals is 0-indexed list of available stages
                 # increasing all stages below, requires small cooldown
-                # ie from stage 1 to stage 3:
                 if stage > self._stage:
-                    for i in range(self._stage, stage): # [1, 2] stage_terminals[1] = stage 2, stage_terminals[2] = s3
+                    for i in range(self._stage, stage):
                         stage_terminals[i].state(1)
                         await async_sleep_ms(cooldown_ms)
                 # disable all stages above
-                # ie from s3 to 0 (off):
-                # indices = [2, 1, 0] -> term[2] = s3, term[1] = s2, term[0] = s1 
                 elif stage < self._stage:
                     for i in reversed(range(stage, self._stage)):
                         stage_terminals[i].state(0)
