@@ -174,88 +174,101 @@ class MultiStageUnit:
 # change stage with small delay in increases (board will interpet simultaneously connected terminals as 1->long delay->2)
     async def _change_stage(self, stage, cooldown_ms = 750):
         try:
-            async with self._stage_lock:
-                if stage == 0:
-                    self._terminals.set(Terminal.STAGES.keys(), 0)
-                    return 
-                elif stage == self._stage:
-                    log(f'Stage request is same as current stage {stage}.')
-                    return
+            await self._stage_lock.acquire()
+            if stage == 0:
+                self._terminals.set(Terminal.STAGES.keys(), 0)
+                return 
+            elif stage == self._stage:
+                log(f'Stage request is same as current stage {stage}.')
+                return
 
-                # select terminals that control function in this mode
-                applicable_stages = Terminal.HEATING_STAGES if self._mode == UnitMode.HEATING else Terminal.COOLING_STAGES if self._mode == UnitMode.COOLING else None
-                stage_terminals = sorted([s for s in self._terminals if s.ttype in applicable_stages], 
-                                         key = lambda s: s.to_stage())
-                
-                # check stages are set up properly ie [ x1, x2, x3 ] no [ x1, x3 ]
-                if not all([j.to_stage() == i for i, j in enumerate(stage_terminals, start = 1)]):
-                    raise ValueError(f'Invalid configuration: stage missing.')
+            # select terminals that control function in this mode
+            applicable_stages = Terminal.HEATING_STAGES if self._mode == UnitMode.HEATING else Terminal.COOLING_STAGES if self._mode == UnitMode.COOLING else None
+            stage_terminals = sorted([s for s in self._terminals if s.ttype in applicable_stages], 
+                                        key = lambda s: s.to_stage())
+            
+            # verify stages are set up properly ie [ x1, x2, x3 ] no [ x1, x3 ]
+            if not all([j.to_stage() == i for i, j in enumerate(stage_terminals, start = 1)]):
+                raise ValueError(f'Invalid configuration: stage missing.')
 
-                # check all pins for current stage are correctly enabled (in case of manual switching)
-                # in that case set our current stage to the lowest consecutive stage 
-                # ie [s1 = 1, s2 = 0, s3 = 1] highest valid stage is s[1] 
-                for i, j in enumerate(stage_terminals):
-                    if i in range(0, self._stage):
-                        if j.state() == 0:
-                            log(f'Invalid configuration: terminal {i + 1} was disabled. Lowering mode stage to {i}')
-                            self._stage = i
-                    else:
-                        j.state(0)
 
-                if not all([s == stage_terminals[s].to_stage() for s in range(1, stage)]):
-                    raise ValueError(f'Invalid stage {stage} provided. Available stages: {[s.ttype for s in stage_terminals]}')
-                
-                # stage_terminals is 0-indexed list of available stages
-                # increasing all stages below, requires small cooldown
-                if stage > self._stage:
-                    for i in range(self._stage, stage):
-                        stage_terminals[i].state(1)
-                        await async_sleep_ms(cooldown_ms)
-                # disable all stages above
-                elif stage < self._stage:
-                    for i in reversed(range(stage, self._stage)):
-                        stage_terminals[i].state(0)
+        # todo 
+            # check all pins for current stage are correctly enabled (in case of manual switching)
+            # in that case set our current stage to the lowest consecutive stage 
+            # ie [s1 = 1, s2 = 0, s3 = 1] highest valid stage is s[1] 
+            for i, j in enumerate(stage_terminals):
+                if i in range(0, self._stage):
+                    if j.state() == 0:
+                        log(f'Invalid configuration: terminal {i + 1} was disabled. Lowering mode stage to {i}')
+                        self._stage = i
+                else:
+                    j.state(0)
 
-                self._stage = stage
-                return True
+
+            if not all([s == stage_terminals[s].to_stage() for s in range(1, stage)]):
+                raise ValueError(f'Invalid stage {stage} provided. Available stages: {[s.ttype for s in stage_terminals]}')
+            
+            # stage_terminals is 0-indexed list of available stages
+            # increasing all stages below, requires small cooldown
+            if stage > self._stage:
+                for i in range(self._stage, stage):
+                    stage_terminals[i].state(1)
+                    await async_sleep_ms(cooldown_ms)
+            # disable all stages above
+            elif stage < self._stage:
+                for i in reversed(range(stage, self._stage)):
+                    stage_terminals[i].state(0)
+
+            self._stage = stage
+            raise NotImplementedError
         except CancelledError as e:
             log(f'Stage change from {self._stage} to {stage} cancelled.')
             raise e
+        finally:
+            if self._stage_lock.locked():
+                self._stage_lock.release()
 
 # init off current mode, wait for cooldown if not already off, change to desired mode and stage  
     async def _change_mode(self, mode, initial_stage = 0, cooldown_ms = None):
         try:
-            async with self._mode_lock:
-                match mode:
-                    case self._mode:
-                        log('Mode change: matches current mode.')
-                        return mode
-                    case UnitMode.HEATING | UnitMode.COOLING | UnitMode.AUX:
-                        pass
-                    case _:
-                        raise ValueError('Mode change: invalid mode given.')
-                # current mode off
-                await self._change_stage(0)
-                # if starting from off then no need to wait
-                if self._mode != UnitMode.UNSPECIFIED:
-                    await async_sleep_ms(cooldown_ms or self._mode_cooldown_ms)
-                # start new mode
-                self._mode = mode
-                await self._change_stage(initial_stage)
+            await self._mode_lock.acquire()
+            if mode == self._mode:
+                log('Mode change: matches current mode.')
+                return mode
+            elif mode == UnitMode.HEATING | UnitMode.COOLING | UnitMode.AUX:
+                pass
+            else:
+                raise ValueError('Mode change: invalid mode given.')
+            # current mode off
+            await self._change_stage(0)
+            # if starting from off then no need to wait
+            if self._mode != UnitMode.UNSPECIFIED:
+                await async_sleep_ms(cooldown_ms or self._mode_cooldown_ms)
+            # start new mode
+            self._mode = mode
+            await self._change_stage(initial_stage)
         except CancelledError as e:
             log(f'Mode change from {self._mode.name} to {mode.name} cancelled.')
             raise e
+        finally:
+            if self._mode_lock.locked():
+                self._mode_lock.release()
+
 
 # public function to control device
     async def run(self, stage, mode = UnitMode.UNSPECIFIED):
 
-        async with self._run_lock:
+        try:
+            await self._run_lock.acquire()
             if mode == UnitMode.UNSPECIFIED:
                 if self._mode == UnitMode.UNSPECIFIED:
                     raise ValueError(f'No mode has been set for this MultiStageUnit.')
                 else:
                     mode = self._mode
             await self._change_mode(mode, stage)
+        finally:
+            if self._run_lock.locked():
+                self._run_lock.release()
 
     def has_stage(self, stage, mode = UnitMode.UNSPECIFIED):
         raise NotImplementedError
