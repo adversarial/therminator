@@ -14,10 +14,10 @@ Schematic files are included in ./images. MicroPython code can be directly uploa
 
 ![Schematic](https://github.com/adversarial/therminator/blob/master/images/schematic.png)
 
-![Breadboard](https://github.com/adversarial/therminator/blob/master/images/breadboard.png)
+![Breadboard](https://github.com/adversarial/therminator/blob/master/images/breadboard.jpg)
 
-![Protoboardbottom](https://github.com/adversarial/therminator/blob/master/images/protoboardbottom.png)
+![Protoboardbottom](https://github.com/adversarial/therminator/blob/master/images/protoboardbottom.jpg)
 
-![Protoboardtop](https://github.com/adversarial/therminator/blob/master/images/protoboardtop.png)
+![Protoboardtop](https://github.com/adversarial/therminator/blob/master/images/protoboardtop.jpg)
 
 ---
