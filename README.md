@@ -10,15 +10,14 @@ Run webserver.py as main.py to create a Wi-Fi hotspot with name and password spe
 
 Schematic files are included in ./images. MicroPython code can be directly uploaded to Raspberry Pi Pico W or ESP32.
 
-![Prototype](https://github.com/adversarial/therminator/images/prototype.png)
+![Prototype](https://github.com/adversarial/therminator/blob/master/images/prototype.png)
 
+![Schematic](https://github.com/adversarial/therminator/blob/master/images/schematic.png)
 
-![Schematic](https://github.com/adversarial/therminator/images/schematic.png)
+![Breadboard](https://github.com/adversarial/therminator/blob/master/images/breadboard.png)
 
-![Breadboard](https://github.com/adversarial/therminator/images/breadboard.png)
+![Protoboardbottom](https://github.com/adversarial/therminator/blob/master/images/protoboardbottom.png)
 
-![Protoboardbottom](https://github.com/adversarial/therminator/images/protoboardbottom.png)
-
-![Protoboardtop](https://github.com/adversarial/therminator/images/protoboardtop.png)
+![Protoboardtop](https://github.com/adversarial/therminator/blob/master/images/protoboardtop.png)
 
 ---
